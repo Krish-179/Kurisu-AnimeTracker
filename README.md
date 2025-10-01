@@ -1,5 +1,5 @@
 # Kurisu-AnimeTracker
-AnimeTracker is an Android app that helps you manage, track, and update your anime progress *automatically*. It integrates with MyAnimeList (MAL) and AniList APIs, automatically updating your list when an episode is 90% watched.
+Kurisu is an Android app that helps you manage, track, and update your anime progress *automatically*. It integrates with MyAnimeList (MAL) and AniList APIs, automatically updating your list when an episode is 90% watched.
 This is my first big project built with *Jetpack Compose*.
 
 ⚠ *Note:* This app currently supports *offline downloaded anime* only and *MP4* files. Other streaming sources or file formats (like MKV) are *not supported*.
