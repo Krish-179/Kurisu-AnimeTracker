@@ -12,4 +12,7 @@
 /captures
 .externalNativeBuild
 .cxx
+Malapi.kt
+MalUsing.kt
+AniListApi.kt
 local.properties
