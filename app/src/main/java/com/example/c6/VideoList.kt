@@ -10,6 +10,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -221,6 +222,7 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
                                 }
                             )
                             .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
                     ){
                         Spacer(modifier = Modifier.width(5.dp))
@@ -228,7 +230,7 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
                             modifier = Modifier.size(40.dp),
                             contentAlignment = Alignment.Center
                         ){
-                            if(file?.type=="video/mp4" || file?.type=="video/x-matroska"){
+                            if(file?.type=="video/mp4"){
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
                                         .data(file?.uri)
@@ -237,7 +239,7 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
                                         .videoFramePercent(0.4)
                                         .build(),
                                     contentDescription = null,
-                                    modifier = Modifier
+                                    modifier = Modifier.align(alignment = Alignment.Center)
                                         .size(80.dp)
                                         .clip(shape = RoundedCornerShape(8.dp)),
                                     contentScale = ContentScale.Crop
@@ -248,9 +250,10 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
                                     imageVector = Icons.Default.PlayArrow,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier
-                                        .clip(shape = RoundedCornerShape(8.dp))
-                                        .background(color = Color.Blue.copy(alpha = 0.8f))
+                                    modifier = Modifier.align(alignment = Alignment.Center)
+                                        .clip(shape = RoundedCornerShape(10.dp))
+                                        .size(55.dp)
+                                        .background(color = Color.Blue.copy(alpha = 0.7f))
                                 )
                             }
                         }
