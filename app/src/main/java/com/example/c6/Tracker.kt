@@ -20,14 +20,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +43,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
@@ -89,8 +97,10 @@ fun TrackerTopBar(navController: NavController){
 }
 @SuppressLint("CoroutineCreationDuringComposition")
 @Composable
-fun TrackerBody(innerPadding : PaddingValues,context: ComponentActivity,malapi: Malapi,aniListApi: AniListApi){
+fun TrackerBody(innerPadding : PaddingValues,context: ComponentActivity,malapi: Malapi,aniListApi: AniListApi,room: room){
     val flag = SettingsManager.getUpdateProgress(context).collectAsState(initial = false).value
+    var showAlertDialog by remember { mutableStateOf(false) }
+    var logOutTrackerName by remember { mutableStateOf("") }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -142,7 +152,13 @@ fun TrackerBody(innerPadding : PaddingValues,context: ComponentActivity,malapi: 
                     .padding(vertical = 12.dp, horizontal = 4.dp)
                     .clickable(
                         onClick = {
-                            malapi.loginMal()
+                            if (malapi.access_token.isNullOrEmpty()){
+                                malapi.loginMal()
+                            }
+                            else {
+                                showAlertDialog = true
+                                logOutTrackerName = "MyAnimeList"
+                            }
                         }
                     )
             ){
@@ -178,7 +194,13 @@ fun TrackerBody(innerPadding : PaddingValues,context: ComponentActivity,malapi: 
                     .padding(vertical = 12.dp, horizontal = 4.dp)
                     .clickable(
                         onClick = {
-                            aniListApi.loginAnilist()
+                            if (aniListApi.access_token.isNullOrEmpty()){
+                                aniListApi.loginAnilist()
+                            }
+                            else{
+                                showAlertDialog = true
+                                logOutTrackerName = "AniList"
+                            }
                         }
                     )
             ){
@@ -206,6 +228,52 @@ fun TrackerBody(innerPadding : PaddingValues,context: ComponentActivity,malapi: 
                 }
                 Spacer(modifier = Modifier.width(12.dp))
             }
+        }
+        if (showAlertDialog){
+            AlertDialog(
+                onDismissRequest = { showAlertDialog = false},
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (logOutTrackerName.contentEquals("MyAnimeList")){
+                                room.setMalApiAccessToken("")
+                                room.setMalApiRefreshToken("")
+                            }
+                            if (logOutTrackerName.contentEquals("AniList")){
+                                room.setAniListToken("")
+                            }
+                            showAlertDialog = false
+                        }
+                    ) {
+                        Text(
+                            text = "Log out",
+                            color = Color.Red,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showAlertDialog = false}
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                },
+                title = {
+                    Text(
+                        text = "Log out from $logOutTrackerName",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                titleContentColor = Color.White,
+                tonalElevation = 12.dp,
+                shape = RoundedCornerShape(16.dp)
+            )
         }
     }
 }

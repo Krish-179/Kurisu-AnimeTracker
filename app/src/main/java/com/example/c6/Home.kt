@@ -10,6 +10,7 @@ import androidx.annotation.OptIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,14 +35,17 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,12 +58,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavController
 import kotlinx.coroutines.launch
@@ -214,11 +221,15 @@ fun HomeBottomBar(navController: NavController,malUsing: MalUsing){
         }
     }
 }
+
+@OptIn(UnstableApi::class)
+@kotlin.OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,navController: NavController,folderUri1: FolderUri,flags: AppFlags){
     val sort = room.getSortBy().collectAsState(initial = HomeFilter()).value.sortBy
     var folderList: List<Folder>
     var isLoading by remember { mutableStateOf(true) }
+    val folderCount = room.folderDao.getCount().collectAsState(initial = -1).value
     when(sort){
         "Name" -> folderList = room.getSortedByNameList().collectAsState(initial = emptyList()).value
         "Time" -> folderList = room.getSortedByTimeList().collectAsState(initial = emptyList()).value
@@ -228,16 +239,27 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
     LaunchedEffect(folderList) {
         isLoading = folderList.isEmpty()
     }
-    if (isLoading){
+    folderList = folderList.filter { folder ->
+        val file = DocumentFile.fromTreeUri(context, Uri.parse(folder.folderUri))
+        if ( file != null && file.exists())
+            true
+        else{
+            room.deleteFolder(folder.folderUri)
+            false
+        }
+    }
+    Log.d("Home","$folderCount")
+    if (isLoading && folderCount != 0){
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
         ){
             CircularProgressIndicator()
         }
     }
-    else if (folderList.isNullOrEmpty()){
+    else if (folderList.isNullOrEmpty() && folderCount == 0){
         Box (
             modifier = Modifier
                 .fillMaxSize()
@@ -261,16 +283,147 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                     fontWeight = FontWeight.Medium
                 )
             }
+            if (flags.homeFilterSelected.value){
+                Column (
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .padding(top = 3.dp, end = 3.dp)
+                        .align(alignment = Alignment.TopEnd)
+                        .clip(shape = RoundedCornerShape(22.dp))
+                        .background(color = Color(0xFF222326))
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                ){
+                    Spacer(modifier = Modifier.height(10.dp))
+                    if (sort.contentEquals("Name")){
+                        Text(
+                            text = "Name",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontSize = 24.sp
+                            ),
+                            color = Color(0xFF0BA6DF),
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .padding(start = 5.dp)
+                                .fillMaxWidth(0.3f)
+                                .clickable(
+                                    onClick = {
+                                        flags.homeFilterSelected.value = false
+                                    }
+                                )
+                        )
+                    }
+                    else{
+                        Text(
+                            text = "Name",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontSize = 24.sp
+                            ),
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .padding(start = 5.dp)
+                                .fillMaxWidth(0.3f)
+                                .clickable(
+                                    onClick = {
+                                        room.updateSortBy("Name")
+                                        flags.homeFilterSelected.value = false
+                                    }
+                                )
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (sort.contentEquals("Time")) {
+                        Text(
+                            text = "Time",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontSize = 24.sp
+                            ),
+                            color = Color(0xFF0BA6DF),
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .padding(start = 5.dp)
+                                .fillMaxWidth(0.3f)
+                                .clickable(
+                                    onClick = {
+                                        flags.homeFilterSelected.value = false
+                                    }
+                                )
+                        )
+                    }
+                    else{
+                        Text(
+                            text = "Time",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontSize = 24.sp
+                            ),
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .padding(start = 5.dp)
+                                .fillMaxWidth(0.3f)
+                                .clickable(
+                                    onClick = {
+                                        room.updateSortBy("Time")
+                                        flags.homeFilterSelected.value = false
+                                    }
+                                )
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (sort.contentEquals("Size")) {
+                        Text(
+                            text = "Episodes",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontSize = 24.sp
+                            ),
+                            color = Color(0xFF0BA6DF),
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .padding(start = 5.dp)
+                                .fillMaxWidth(0.3f)
+                                .clickable(
+                                    onClick = {
+                                        flags.homeFilterSelected.value = false
+                                    }
+                                )
+                        )
+                    }
+                    else{
+                        Text(
+                            text = "Episodes",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontSize = 24.sp
+                            ),
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .padding(start = 5.dp)
+                                .fillMaxWidth(0.3f)
+                                .clickable(
+                                    onClick = {
+                                        room.updateSortBy("Size")
+                                        flags.homeFilterSelected.value = false
+                                    }
+                                )
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+            }
         }
     }
     else{
+        var showAlertDialog by remember { mutableStateOf(false) }
+        var deletingFolderUri by remember { mutableStateOf<String?>("") }
         Box (
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ){
             LazyColumn (
-                modifier = Modifier.padding(top = 20.dp)
+                modifier = Modifier
+                    .padding(top = 20.dp)
                     .clickable(
                         onClick = {
                             flags.homeFilterSelected.value = false
@@ -287,17 +440,25 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                         }?.size,file?.name,folder.folderUri)
                     }
                     Card (
-                        onClick = {
-                            room.updateLastUsed(System.currentTimeMillis(),folder.folderUri)
-                            folderUri1.uri = folder.folderUri
-                            navController.navigate("VideoList")
-                        },
                         colors = CardDefaults.cardColors(
                             containerColor = Color.White.copy(0.1f)
                         ),
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(2.dp),
                         modifier = Modifier.padding(vertical = 8.dp, horizontal = 15.dp)
+                            .pointerInput(Unit){
+                                detectTapGestures(
+                                    onLongPress = {
+                                        showAlertDialog = true
+                                        deletingFolderUri = folder.folderUri
+                                    },
+                                    onTap = {
+                                        room.updateLastUsed(System.currentTimeMillis(),folder.folderUri)
+                                        folderUri1.uri = folder.folderUri
+                                        navController.navigate("VideoList")
+                                    }
+                                )
+                            }
                     ){
                         Row (
                             verticalAlignment = Alignment.CenterVertically,
@@ -315,7 +476,7 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                             Spacer(modifier = Modifier.width(15.dp))
                             Column {
                                 Spacer(modifier = Modifier.height(10.dp))
-                                if (file?.name?.length!! >= 50){
+                                if (file?.name?.length?: 0 >= 50){
                                     Text(
                                         text = "${file?.name?.substring(0,50)} ...",
                                         color = Color.White,
@@ -350,7 +511,8 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                 Column (
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(top = 3.dp, end = 3.dp)
+                    modifier = Modifier
+                        .padding(top = 3.dp, end = 3.dp)
                         .align(alignment = Alignment.TopEnd)
                         .clip(shape = RoundedCornerShape(22.dp))
                         .background(color = Color(0xFF222326))
@@ -365,7 +527,8 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                             ),
                             color = Color(0xFF0BA6DF),
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = 5.dp)
+                            modifier = Modifier
+                                .padding(start = 5.dp)
                                 .fillMaxWidth(0.3f)
                                 .clickable(
                                     onClick = {
@@ -382,7 +545,8 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                             ),
                             color = Color.White,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = 5.dp)
+                            modifier = Modifier
+                                .padding(start = 5.dp)
                                 .fillMaxWidth(0.3f)
                                 .clickable(
                                     onClick = {
@@ -401,7 +565,8 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                             ),
                             color = Color(0xFF0BA6DF),
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = 5.dp)
+                            modifier = Modifier
+                                .padding(start = 5.dp)
                                 .fillMaxWidth(0.3f)
                                 .clickable(
                                     onClick = {
@@ -418,7 +583,8 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                             ),
                             color = Color.White,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = 5.dp)
+                            modifier = Modifier
+                                .padding(start = 5.dp)
                                 .fillMaxWidth(0.3f)
                                 .clickable(
                                     onClick = {
@@ -437,7 +603,8 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                             ),
                             color = Color(0xFF0BA6DF),
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = 5.dp)
+                            modifier = Modifier
+                                .padding(start = 5.dp)
                                 .fillMaxWidth(0.3f)
                                 .clickable(
                                     onClick = {
@@ -454,7 +621,8 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                             ),
                             color = Color.White,
                             fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = 5.dp)
+                            modifier = Modifier
+                                .padding(start = 5.dp)
                                 .fillMaxWidth(0.3f)
                                 .clickable(
                                     onClick = {
@@ -466,6 +634,48 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                 }
+            }
+            if (showAlertDialog){
+                AlertDialog(
+                    onDismissRequest = { showAlertDialog = false},
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                if (!deletingFolderUri.isNullOrEmpty()){
+                                    room.deleteFolder(deletingFolderUri)
+                                }
+                                showAlertDialog = false
+                            }
+                        ) {
+                            Text(
+                                text = "Remove",
+                                color = Color.Red
+                            )
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = {
+                                showAlertDialog = false
+                            }
+                        ) {
+                            Text(
+                                text = "Cancel",
+                                color = Color.White
+                            )
+                        }
+                    },
+                    title = {
+                        Text("Confirm Remove")
+                    },
+                    text = {
+                        Text("Are you sure you want to remove this folder?")
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    textContentColor = Color.White.copy(alpha = 0.8f),
+                    titleContentColor = Color.White,
+                    tonalElevation = 12.dp
+                )
             }
         }
     }

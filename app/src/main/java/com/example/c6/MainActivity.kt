@@ -161,7 +161,7 @@ class MainActivity : ComponentActivity() {
                             SettingsBody(innerPadding,navController)
                         }
                         "Tracker" -> {
-                            TrackerBody(innerPadding,this,malApi,aniListApi)
+                            TrackerBody(innerPadding,this,malApi,aniListApi,room)
                         }
                         "Preferences" -> {
                             PreferencesBody(innerPadding,this)

@@ -8,7 +8,9 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -40,6 +42,22 @@ class AniListApi(val context: ComponentActivity){
                 id
                 name
              }
+        }
+    """.trimIndent()
+
+    val searchQueryById = """
+        query (${"$"}id: Int) {
+            Media(id: ${"$"}id, type: ANIME) {
+                id
+                title {
+                    romaji
+                    english
+                }
+                episodes
+            }
+            MediaList(mediaId: ${"$"}id) {
+                progress
+            }      
         }
     """.trimIndent()
 
@@ -135,6 +153,22 @@ class AniListApi(val context: ComponentActivity){
         Log.d("Error","AniList",e)
         emit(emptyList())
     }
+
+    fun getAnimeById(folder: List<Folder>): Flow<List<MediaContainer?>> = flow{
+        val animeList = mutableListOf<MediaContainer?>()
+        for (f in folder){
+            try {
+                animeList.add(api?.getAnimeById(GraphQLRequest(searchQueryById, mapOf("id" to f.aniId)))?.data)
+            } catch (e: Exception) {
+                Log.d("Error","Tracker List in Ani",e)
+            }
+            Log.d("List","$animeList")
+        }
+        emit(animeList)
+    }.catch { e ->
+        emit(mutableListOf())
+        Log.d("Error","Tracker List in Ani",e)
+    }
     fun updateAnimeList(Id: Int,episodes: Int){
         if (SettingsManager.notification == true) {
             context.lifecycleScope.launch {
@@ -187,6 +221,10 @@ interface Alapi{
     suspend fun getSearchAnimeList(
         @Body body: GraphQLRequest
     ): SearchAnimeList
+    @POST("/")
+    suspend fun getAnimeById(
+        @Body body: GraphQLRequest
+    ): SearchAnimeById
 }
 data class GraphQLRequest(
     val query: String,
@@ -196,6 +234,27 @@ data class GraphQLResponse(
     val data: MediaListCollectionWrapper?
 )
 
+data class SearchAnimeById(
+    val data: MediaContainer
+)
+
+data class MediaContainer(
+    val Media: MediaItem,
+    val MediaList: SaveMediaListEntry
+)
+data class SaveMediaListEntry(
+    val progress: Int
+)
+data class MediaItem(
+    val id: Int,
+    val title: MediaTitle,
+    val episodes: Int,
+    val myListStatus: MyListStatus?
+)
+
+data class MyListStatus(
+    val progress: Int
+)
 data class MediaListCollectionWrapper(
     val MediaListCollection: MediaListCollection
 )

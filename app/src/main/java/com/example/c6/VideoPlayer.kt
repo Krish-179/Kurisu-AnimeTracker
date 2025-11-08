@@ -10,22 +10,28 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PauseCircleOutline
@@ -39,7 +45,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderColors
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -49,9 +57,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -82,9 +96,10 @@ class VideoPlayerActivity : ComponentActivity() {
         setContent {
             val uri = intent.getParcelableExtra<Uri>("videoUri")
             val number = intent.getIntExtra("epNumber", 0)
+            val fileName = intent.getStringExtra("fileName")
             epNumber = number
             if (uri != null) {
-                FullVlcPlayer(uri)
+                FullVlcPlayer(uri,fileName)
             }
         }
     }
@@ -125,6 +140,25 @@ class VideoPlayerActivity : ComponentActivity() {
         setResult(RESULT_OK, resultIntent)
         finish()
     }
+    fun formatTime(timeMs: Long): String {
+        val totalSeconds = timeMs / 1000
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+
+        return if (hours > 0) {
+            String.format("%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format("%02d:%02d", minutes, seconds)
+        }
+    }
+
+    private fun skipForward(){
+        vlcPlayer.time = (vlcPlayer.time + 10000).coerceAtMost(vlcPlayer.length)
+    }
+    private fun skipBackward(){
+        vlcPlayer.time = (vlcPlayer.time - 10000).coerceAtLeast(0)
+    }
 
     private suspend fun copyUriToCache(context: Context, uri: Uri): File =
         withContext(Dispatchers.IO){
@@ -140,7 +174,7 @@ class VideoPlayerActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun FullVlcPlayer(uri: Uri) {
+    fun FullVlcPlayer(uri: Uri,fileName: String?) {
         val context = LocalActivity.current as ComponentActivity
         var isLoading by remember { mutableStateOf(true) }
         var showControls by remember { mutableStateOf(false) }
@@ -148,6 +182,7 @@ class VideoPlayerActivity : ComponentActivity() {
         var showTracks by remember { mutableStateOf(false) }
         var sliderDuration by remember { mutableStateOf(0f) }
         var isSeeking by remember { mutableStateOf(false) }
+        var watched by remember { mutableStateOf("") }
 
         // Attach media
         LaunchedEffect(uri) {
@@ -178,11 +213,35 @@ class VideoPlayerActivity : ComponentActivity() {
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() },
-                        onClick = {
-                            showControls = !showControls
-                            showTracks = false
-                        }
-                    ),
+                        onClick = {}
+                    )
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = {
+                                showControls = !showControls
+                                showTracks = false
+                            },
+                            onDoubleTap = { offset ->
+                                val boxWidth = size.width
+                                if (offset.x < boxWidth / 3) {
+                                    skipBackward()
+                                }
+                                else if (offset.x > boxWidth * 2 / 3) {
+                                    skipForward()
+                                }
+                                else {
+                                    if (isPlaying) {
+                                        isPlaying = false
+                                        vlcPlayer.pause()
+                                    }
+                                    else{
+                                        isPlaying = true
+                                        vlcPlayer.play()
+                                    }
+                                }
+                            }
+                        )
+                    },
             ) {
                 // Video Surface
                 AndroidView(
@@ -201,10 +260,16 @@ class VideoPlayerActivity : ComponentActivity() {
                 // Progress updater
                 LaunchedEffect(vlcPlayer) {
                     while (true) {
-                        delay(1500)
+                        delay(4000)
                         if (showControls && !isSeeking) showControls = false
+                    }
+                }
+                LaunchedEffect(vlcPlayer) {
+                    while (true) {
+                        delay(1000)
                         duration = vlcPlayer.length
                         lastProgress = vlcPlayer.time
+                        watched = formatTime(vlcPlayer.time)
                         if (duration > 0){
                             sliderDuration = lastProgress.toFloat() / duration.toFloat()
                         }
@@ -223,8 +288,46 @@ class VideoPlayerActivity : ComponentActivity() {
             }
             if (showControls){
                 Box (
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = { offset ->
+                                    val boxWidth = size.width
+                                    if (offset.x < boxWidth / 3) {
+                                        skipBackward()
+                                    }
+                                    else if (offset.x > boxWidth * 2 / 3) {
+                                        skipForward()
+                                    }
+                                    else {
+                                        if (isPlaying) {
+                                            isPlaying = false
+                                            vlcPlayer.pause()
+                                        }
+                                        else{
+                                            isPlaying = true
+                                            vlcPlayer.play()
+                                        }
+                                    }
+                                }
+                            )
+                        }
                 ){
+                    Row (
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = 50.dp, vertical = 30.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.Top
+                    ){
+                        Text(
+                            text = fileName?:"",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -233,6 +336,26 @@ class VideoPlayerActivity : ComponentActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Bottom
                     ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 45.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ){
+                            Text(
+                                text = watched,
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Normal,
+                            )
+                            Text(
+                                text = formatTime(vlcPlayer.length),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Normal,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Slider(
                             value = sliderDuration,
                             onValueChange = { newValue ->
@@ -245,31 +368,41 @@ class VideoPlayerActivity : ComponentActivity() {
                                 isSeeking = false
                             },
                             colors = SliderColors(
-                                activeTrackColor = Color.Red.copy(alpha = 0.6f),
+                                activeTrackColor = Color(0xFF0BA6DF).copy(alpha = 0.7f),
                                 inactiveTrackColor = Color.White.copy(alpha = 0.6f),
                                 activeTickColor = Color.Transparent,
                                 inactiveTickColor = Color.Transparent,
-                                thumbColor = Color.Red.copy(alpha = 0.6f),
+                                thumbColor = Color(0xFF0BA6DF),
                                 disabledThumbColor = Color.Transparent,
                                 disabledActiveTrackColor = Color.Transparent,
                                 disabledActiveTickColor = Color.Transparent,
                                 disabledInactiveTrackColor = Color.Transparent,
                                 disabledInactiveTickColor = Color.Transparent,
                             ),
-                            modifier = Modifier.fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 30.dp)
+                                .height(20.dp),
                             thumb = {
                                 Box (
-                                    modifier = Modifier.size(18.dp)
-                                        .background(color = Color.Red.copy(alpha = 0.6f), shape = CircleShape)
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .background(color = Color(0xFF0BA6DF), shape = CircleShape)
+                                        .align(alignment = Alignment.CenterHorizontally)
                                 )
                             },
-
+                            track = { sliderState ->
+                                SliderDefaults.Track(
+                                    sliderState = sliderState,
+                                    modifier = Modifier.height(3.dp)
+                                )
+                            }
                         )
                         Row (
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                                .padding( horizontal = 40.dp)
+                                .padding(bottom = 20.dp),
                             verticalAlignment = Alignment.Bottom,
                             horizontalArrangement = Arrangement.Start
                         ){
@@ -282,39 +415,55 @@ class VideoPlayerActivity : ComponentActivity() {
                                     imageVector = Icons.Default.Subtitles,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(30.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(340.dp))
-                            if (isPlaying){
-                                IconButton(
-                                   onClick = {
-                                       vlcPlayer.pause()
-                                       isPlaying = false
-                                   }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PauseCircleOutline,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(38.dp)
-                                    )
+                            Box (
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ){
+                                if (isPlaying){
+                                    IconButton(
+                                        onClick = {
+                                            vlcPlayer.pause()
+                                            isPlaying = false
+                                        },
+                                        modifier = Modifier.align(alignment = Alignment.Center)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PauseCircleOutline,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                    }
+                                }
+                                else {
+                                    IconButton(
+                                        onClick = {
+                                            vlcPlayer.play()
+                                            isPlaying = true
+                                        },
+                                        modifier = Modifier.align(alignment = Alignment.Center)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayCircleOutline,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(38.dp)
+                                        )
+                                    }
                                 }
                             }
-                            else{
-                                IconButton(
-                                    onClick = {
-                                        vlcPlayer.play()
-                                        isPlaying = true
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayCircleOutline,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(38.dp)
-                                    )
-                                }
+                            IconButton(
+                                onClick = {}
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Subtitles,
+                                    contentDescription = null,
+                                    tint = Color.Transparent,
+                                    modifier = Modifier.size(30.dp)
+                                )
                             }
                         }
                     }
@@ -341,9 +490,9 @@ fun displayTracks(vlcPlayer: MediaPlayer){
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(horizontal = 175.dp)
+                .padding(horizontal = 165.dp)
                 .background(color = Color(0xFF222222).copy(alpha = 0.83f))
-                .height(225.dp)
+                .height(250.dp)
         ){
             Spacer(modifier = Modifier.width(5.dp))
             Column (
@@ -375,7 +524,9 @@ fun displayTracks(vlcPlayer: MediaPlayer){
                     )
                 }
                 else{
-                    LazyColumn {
+                    LazyColumn (
+                        modifier = Modifier.padding(horizontal = 10.dp)
+                    ){
                         items(audioTracks){ track ->
                             Row (
                                 modifier = Modifier.clickable(
@@ -383,7 +534,8 @@ fun displayTracks(vlcPlayer: MediaPlayer){
                                         currentAudioTrack = track.id
                                         vlcPlayer.setAudioTrack(currentAudioTrack)
                                     }
-                                )
+                                ),
+                                horizontalArrangement = Arrangement.Start
                             ){
                                 Icon(
                                     imageVector = Icons.Default.Check,
@@ -391,7 +543,7 @@ fun displayTracks(vlcPlayer: MediaPlayer){
                                     modifier = Modifier.size(26.dp),
                                     tint = if (currentAudioTrack == track.id) Color.White.copy(alpha = 0.9f) else Color.Transparent
                                 )
-                                Spacer(modifier = Modifier.width(5.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "${track.name ?: track.id}",
                                     fontWeight = FontWeight.Medium,
@@ -404,6 +556,7 @@ fun displayTracks(vlcPlayer: MediaPlayer){
                     }
                 }
             }
+            VerticalDivider(color = Color.White.copy(alpha = 0.5f))
             Column (
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -433,7 +586,9 @@ fun displayTracks(vlcPlayer: MediaPlayer){
                     )
                 }
                 else{
-                    LazyColumn {
+                    LazyColumn (
+                        modifier = Modifier.padding(horizontal = 10.dp)
+                    ){
                         items(subtitleTracks){ track ->
                             Row (
                                 modifier = Modifier.clickable(
@@ -441,7 +596,8 @@ fun displayTracks(vlcPlayer: MediaPlayer){
                                         currentSubtitleTrack = track.id
                                         vlcPlayer.setSpuTrack(currentSubtitleTrack)
                                     }
-                                )
+                                ),
+                                horizontalArrangement = Arrangement.Start
                             ){
                                 Icon(
                                     imageVector = Icons.Default.Check,
@@ -449,7 +605,7 @@ fun displayTracks(vlcPlayer: MediaPlayer){
                                     modifier = Modifier.size(26.dp),
                                     tint = if (currentSubtitleTrack == track.id) Color.White.copy(alpha = 0.9f) else Color.Transparent
                                 )
-                                Spacer(modifier = Modifier.width(5.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "${track.name ?: track.id}",
                                     fontWeight = FontWeight.Medium,

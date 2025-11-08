@@ -27,9 +27,7 @@ class MalUsing(){
     fun getAnimeList(folderlist: List<Folder>): Flow<List<WatchingAnime?>> = flow{
         val animeList = mutableListOf<WatchingAnime?>()
         for (f in folderlist){
-            if (f.malId!=0) {
-                animeList.add(api?.getAnime(anime_id = f.malId))
-            }
+            animeList.add(api?.getAnime(anime_id = f.malId))
         }
         emit(animeList)
     }.catch { e->

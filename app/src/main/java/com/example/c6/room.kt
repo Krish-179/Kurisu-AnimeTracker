@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.room.Dao
 import androidx.room.Database
+import androidx.room.Delete
 import androidx.room.Entity
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy.Companion.IGNORE
@@ -25,6 +26,11 @@ class room(private val context: ComponentActivity){
     fun addFolder(uri: String){
         context.lifecycleScope.launch {
             folderDao.addFolder(Folder(folderUri = uri, malId = 0, aniId = 0, name = null))
+        }
+    }
+    fun deleteFolder(uri: String?) {
+        context.lifecycleScope.launch {
+            folderDao.deleteFolder(uri)
         }
     }
     fun updateSortBy(sort: String){
@@ -131,6 +137,8 @@ interface Home{
 interface FolderDao{
     @Insert
     suspend fun addFolder(folder: Folder)
+    @Query("delete from folder where folderUri = :uri")
+    suspend fun deleteFolder(uri: String?)
     @Query("select * from Folder")
     fun display(): Flow<List<Folder>>
     @Query("SELECT EXISTS(SELECT 1 FROM folder WHERE folderUri = :uri)")
@@ -151,6 +159,8 @@ interface FolderDao{
     fun getSortedByVideo(): Flow<List<Folder>>
     @Query("select * from folder order by lastUsed desc")
     fun getSortedByTime(): Flow<List<Folder>>
+    @Query("select count(*) from folder")
+    fun getCount(): Flow<Int>
 }
 
 @Dao

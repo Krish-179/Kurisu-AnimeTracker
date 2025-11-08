@@ -154,7 +154,8 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
     val scope = rememberCoroutineScope()
     if (isLoading){
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
         ){
@@ -210,6 +211,7 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
                                         Intent(context, VideoPlayerActivity::class.java).apply {
                                             putExtra("videoUri", file?.uri)
                                             putExtra("epNumber", number)
+                                            putExtra("fileName",file?.name)
                                         }
                                     playerLauncher.launch(intent)
                                     scope.launch {
@@ -239,7 +241,8 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
                                         .videoFramePercent(0.4)
                                         .build(),
                                     contentDescription = null,
-                                    modifier = Modifier.align(alignment = Alignment.Center)
+                                    modifier = Modifier
+                                        .align(alignment = Alignment.Center)
                                         .size(80.dp)
                                         .clip(shape = RoundedCornerShape(8.dp)),
                                     contentScale = ContentScale.Crop
@@ -250,7 +253,8 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
                                     imageVector = Icons.Default.PlayArrow,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier.align(alignment = Alignment.Center)
+                                    modifier = Modifier
+                                        .align(alignment = Alignment.TopCenter)
                                         .clip(shape = RoundedCornerShape(10.dp))
                                         .size(55.dp)
                                         .background(color = Color.Blue.copy(alpha = 0.7f))
@@ -286,7 +290,7 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
                                     fontWeight = FontWeight.Normal
                                 )
                             }
-                            Spacer(modifier = Modifier.height(5.dp))
+                            Spacer(modifier = Modifier.height(7.dp))
                             HorizontalDivider(color = Color.White.copy(alpha = 0.5f))
                         }
                         Spacer(modifier = Modifier.width(10.dp))
