@@ -8,6 +8,9 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
+MalUsing.kt
+Malapi.kt
+AniList.kt
 /build
 /captures
 .externalNativeBuild
