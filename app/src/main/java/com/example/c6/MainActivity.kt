@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -82,7 +83,21 @@ class MainActivity : ComponentActivity() {
                 val flags: AppFlags = viewModel()
                 var destination by remember { mutableStateOf("Home") }
                 val tracking = Tracking()
-
+                val watchedList = room.getOfflineWatchedList().collectAsState(initial = emptyList()).value
+                val isOnline = rememberNetworkState(this)
+                LaunchedEffect(Unit,watchedList,isOnline) {
+                    if (isOnline && !watchedList.isEmpty()){
+                        for (ep in watchedList){
+                            Log.d("MainEP","$watchedList")
+                            if (ep.malId != 0)
+                                malUsing.updateUserList(ep.malId,ep.epNumber)
+                            if (ep.aniId != 0)
+                                aniListApi.updateAnimeList(ep.aniId,ep.epNumber)
+                            room.deleteEp(ep)
+                        }
+                        SettingsManager.showNotification(this@MainActivity,"Pending Episodes Updated","Mal and AniList lists Updated")
+                    }
+                }
                 NavHost(navController = navController, startDestination = "Home"){
                     composable("Home") {
                         destination = "Home"

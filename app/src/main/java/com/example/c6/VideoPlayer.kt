@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -91,7 +92,17 @@ class VideoPlayerActivity : ComponentActivity() {
 
         hideSystemUI()
         libVlc = LibVLC(this, arrayListOf("--no-drop-late-frames", "--no-skip-frames"))
-        vlcPlayer = MediaPlayer(libVlc)
+        vlcPlayer = MediaPlayer(libVlc).apply {
+            setEventListener { event ->
+                when (event.type){
+                    MediaPlayer.Event.EndReached -> {
+                        runOnUiThread {
+                            returnResult(true)
+                        }
+                    }
+                }
+            }
+        }
 
         setContent {
             val uri = intent.getParcelableExtra<Uri>("videoUri")
@@ -106,15 +117,8 @@ class VideoPlayerActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        val watched = duration > 0 && (lastProgress.toDouble() / duration.toDouble()) * 100 >= 90
-        returnResult(watched)
-    }
-
-    @SuppressLint("GestureBackNavigation")
-    override fun onBackPressed() {
-        val watched = duration > 0 && (lastProgress.toDouble() / duration.toDouble()) * 100 >= 90
-        setResult(RESULT_OK, Intent().apply { putExtra("Update", watched) })
-        super.onBackPressed()
+        val watchedNow = duration > 0 && (lastProgress.toDouble() / duration) * 100 >= 90
+        setResult(RESULT_OK, Intent().putExtra("Update", watchedNow))
     }
 
     private fun hideSystemUI() {
@@ -184,6 +188,12 @@ class VideoPlayerActivity : ComponentActivity() {
         var isSeeking by remember { mutableStateOf(false) }
         var watched by remember { mutableStateOf("") }
 
+        BackHandler(true) {
+            val watchedNow =
+                vlcPlayer.length > 0 &&
+                        (vlcPlayer.time.toDouble() / vlcPlayer.length.toDouble()) * 100.0 >= 90.0
+            returnResult(watchedNow) // setResult + finish()
+        }
         // Attach media
         LaunchedEffect(uri) {
             val file = copyUriToCache(context, uri)
@@ -225,16 +235,13 @@ class VideoPlayerActivity : ComponentActivity() {
                                 val boxWidth = size.width
                                 if (offset.x < boxWidth / 3) {
                                     skipBackward()
-                                }
-                                else if (offset.x > boxWidth * 2 / 3) {
+                                } else if (offset.x > boxWidth * 2 / 3) {
                                     skipForward()
-                                }
-                                else {
+                                } else {
                                     if (isPlaying) {
                                         isPlaying = false
                                         vlcPlayer.pause()
-                                    }
-                                    else{
+                                    } else {
                                         isPlaying = true
                                         vlcPlayer.play()
                                     }
@@ -296,16 +303,13 @@ class VideoPlayerActivity : ComponentActivity() {
                                     val boxWidth = size.width
                                     if (offset.x < boxWidth / 3) {
                                         skipBackward()
-                                    }
-                                    else if (offset.x > boxWidth * 2 / 3) {
+                                    } else if (offset.x > boxWidth * 2 / 3) {
                                         skipForward()
-                                    }
-                                    else {
+                                    } else {
                                         if (isPlaying) {
                                             isPlaying = false
                                             vlcPlayer.pause()
-                                        }
-                                        else{
+                                        } else {
                                             isPlaying = true
                                             vlcPlayer.play()
                                         }
@@ -315,7 +319,8 @@ class VideoPlayerActivity : ComponentActivity() {
                         }
                 ){
                     Row (
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
                             .padding(horizontal = 50.dp, vertical = 30.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.Top
@@ -337,7 +342,8 @@ class VideoPlayerActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Bottom
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
                                 .padding(horizontal = 45.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -401,7 +407,7 @@ class VideoPlayerActivity : ComponentActivity() {
                         Row (
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding( horizontal = 40.dp)
+                                .padding(horizontal = 40.dp)
                                 .padding(bottom = 20.dp),
                             verticalAlignment = Alignment.Bottom,
                             horizontalArrangement = Arrangement.Start

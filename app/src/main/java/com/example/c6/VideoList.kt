@@ -3,6 +3,7 @@ package com.example.c6
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -127,6 +128,7 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
     var videoList by remember { mutableStateOf<List<DocumentFile>>(emptyList()) }
     if (flag && flag1){
         if (isOnline) {
+            Log.d("VideoListEp","${updateProgress.epNumber} ${updateProgress.alAnimeId}")
             if (updateProgress.alAnimeId.value != 0) {
                 aniListApi.updateAnimeList(updateProgress.alAnimeId.value,updateProgress.epNumber.value)
             }
@@ -135,7 +137,8 @@ fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLaun
             }
         }
         else{
-            Toast.makeText(context,"No internet connection", Toast.LENGTH_SHORT).show()
+            room.addEp(updateProgress.malAnimeId.value,updateProgress.alAnimeId.value,updateProgress.epNumber.value)
+            Toast.makeText(context,"Update when internet available", Toast.LENGTH_SHORT).show()
         }
         SettingsManager.flag.value = !flag
     }

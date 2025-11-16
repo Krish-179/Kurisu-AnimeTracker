@@ -26,7 +26,7 @@ class Malapi(val context: ComponentActivity,val malUsing: MalUsing) {
     private val clientId = "6826b7227389e1ab2fcfae4625efe8c2"
     private val redirectUrl ="myanimetracker://callback"
     val verifier = generateCodeVerifier()
-    fun updateRoom(room: room,list: Token){
+    fun updateRoom(room: room,list: Token?){
         this.room = room
         access_token = list?.malApiAccessToken
         refresh_token = list?.malApiRefreshToken

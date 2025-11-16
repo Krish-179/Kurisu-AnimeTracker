@@ -23,6 +23,21 @@ class room(private val context: ComponentActivity){
     val folderDao = db.folderDao()
     val tokenDao = db.getToken()
     val homeFilter = db.homeFilter()
+    val offlineWatched = db.offLineWatched()
+
+    fun addEp(malId: Int,aniId: Int,epNumber: Int){
+        context.lifecycleScope.launch {
+            offlineWatched.addEp(OfflineWatched(malId = malId, aniId = aniId, epNumber = epNumber))
+        }
+    }
+    fun deleteEp(offlineWatched1: OfflineWatched){
+        context.lifecycleScope.launch {
+            offlineWatched.deleteEp(offlineWatched1)
+        }
+    }
+    fun getOfflineWatchedList(): Flow<List<OfflineWatched>>{
+        return offlineWatched.getOfflineWatched()
+    }
     fun addFolder(uri: String){
         context.lifecycleScope.launch {
             folderDao.addFolder(Folder(folderUri = uri, malId = 0, aniId = 0, name = null))
@@ -123,7 +138,22 @@ data class HomeFilter(
     @PrimaryKey val id: Int = 0,
     val sortBy: String = "Name"
 )
-
+@Entity(tableName = "OfflineWatched")
+data class OfflineWatched(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val malId: Int = 0,
+    val aniId: Int = 0,
+    val epNumber: Int
+)
+@Dao
+interface WatchedDao{
+    @Insert
+    suspend fun addEp(offlineWatched: OfflineWatched)
+    @Delete
+    suspend fun deleteEp(offlineWatched: OfflineWatched)
+    @Query("select * from OfflineWatched")
+    fun getOfflineWatched(): Flow<List<OfflineWatched>>
+}
 @Dao
 interface Home{
     @Insert
@@ -182,9 +212,10 @@ interface GetToken{
     @Query("select count(*) from tokens")
     suspend fun count(): Int
 }
-@Database(entities = [Folder::class,Token::class, HomeFilter::class], version = 6)
+@Database(entities = [Folder::class, Token::class, HomeFilter::class, OfflineWatched::class], version = 7)
 abstract class Db: RoomDatabase(){
     abstract fun getToken(): GetToken
     abstract fun folderDao(): FolderDao
     abstract fun homeFilter(): Home
+    abstract fun offLineWatched(): WatchedDao
 }

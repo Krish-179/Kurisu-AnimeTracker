@@ -46,18 +46,21 @@ class AniListApi(val context: ComponentActivity){
     """.trimIndent()
 
     val searchQueryById = """
-        query (${"$"}id: Int) {
-            Media(id: ${"$"}id, type: ANIME) {
-                id
-                title {
-                    romaji
-                    english
+        query (${"$"}userName: String!) {
+            MediaListCollection(userName: ${"$"}userName, status: CURRENT, type: ANIME) {
+                lists {
+                    entries {
+                        progress
+                        media {
+                            title {
+                                english
+                                romaji
+                            }
+                            episodes
+                        }
+                    }
                 }
-                episodes
             }
-            MediaList(mediaId: ${"$"}id) {
-                progress
-            }      
         }
     """.trimIndent()
 
@@ -138,7 +141,7 @@ class AniListApi(val context: ComponentActivity){
                     "username" to "$userName"
                 ))
             } catch (e: Exception) {
-               Log.d("Error","AniList",e)
+               Log.d("Error","AniList getUser()",e)
             }
         }
     }
@@ -150,32 +153,26 @@ class AniListApi(val context: ComponentActivity){
             emit(list)
         }
     }.catch { e->
-        Log.d("Error","AniList",e)
+        Log.d("Error","AniList searchAnimeList()",e)
         emit(emptyList())
     }
 
-    fun getAnimeById(folder: List<Folder>): Flow<List<MediaContainer?>> = flow{
-        val animeList = mutableListOf<MediaContainer?>()
-        for (f in folder){
-            try {
-                animeList.add(api?.getAnimeById(GraphQLRequest(searchQueryById, mapOf("id" to f.aniId)))?.data)
-            } catch (e: Exception) {
-                Log.d("Error","Tracker List in Ani",e)
-            }
-            Log.d("List","$animeList")
+    fun getAnimeById(): Flow<MediaEntries> = flow{
+        var animeList = api?.getAnimeById(GraphQLRequest(searchQueryById,mapOf("userName" to userName)))?.data?.MediaListCollection?.lists?.first()
+        if (animeList != null){
+            emit(animeList)
         }
-        emit(animeList)
-    }.catch { e ->
-        emit(mutableListOf())
-        Log.d("Error","Tracker List in Ani",e)
+        else{
+            Log.d("Tracker AniList","getAnimeById()")
+        }
+    }.catch { e->
+        Log.d("Tracker AniList","in catch of getAnimeById()")
     }
     fun updateAnimeList(Id: Int,episodes: Int){
-        if (SettingsManager.notification == true) {
-            context.lifecycleScope.launch {
-                api?.updateUserList(GraphQLRequest(updateQuery,mapOf("mediaId" to Id,"progress" to episodes)))
-                if (SettingsManager.notification == true){
-                    SettingsManager.showNotification(context,"Anime List Updated","Updated the MyAnimeList for Anime you watched")
-                }
+        context.lifecycleScope.launch {
+            api?.updateUserList(GraphQLRequest(updateQuery,mapOf("mediaId" to Id,"progress" to episodes)))
+            if (SettingsManager.notification == true){
+                SettingsManager.showNotification(context,"Anime List Updated","Updated the AniList for Anime you watched")
             }
         }
     }
@@ -233,27 +230,25 @@ data class GraphQLRequest(
 data class GraphQLResponse(
     val data: MediaListCollectionWrapper?
 )
-
 data class SearchAnimeById(
-    val data: MediaContainer
+    val data: MediaListCollectionX?
 )
-
-data class MediaContainer(
-    val Media: MediaItem,
-    val MediaList: SaveMediaListEntry
+data class MediaListCollectionX(
+    val MediaListCollection: MediaListX
 )
-data class SaveMediaListEntry(
-    val progress: Int
+data class MediaListX(
+    val lists: List<MediaEntries>
 )
-data class MediaItem(
-    val id: Int,
+data class MediaEntries(
+    val entries: List<MediaX>
+)
+data class MediaX(
+    val progress: Int,
+    val media: MediaY
+)
+data class MediaY(
     val title: MediaTitle,
-    val episodes: Int,
-    val myListStatus: MyListStatus?
-)
-
-data class MyListStatus(
-    val progress: Int
+    val episodes: Int
 )
 data class MediaListCollectionWrapper(
     val MediaListCollection: MediaListCollection

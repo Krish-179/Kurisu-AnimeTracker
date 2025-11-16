@@ -193,7 +193,7 @@ class Tracking{
                 Icon(
                     imageVector = Icons.Default.Repeat,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = Color(0xFF0BA6DF).copy(alpha = 0.8f),
                     modifier = Modifier.size(26.dp)
                 )
                 Spacer(modifier = Modifier.height(5.dp))
@@ -201,7 +201,7 @@ class Tracking{
                     text = "Tracking",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White
+                    color = Color(0xFF0BA6DF).copy(alpha = 0.8f)
                 )
             }
             Column (
@@ -236,7 +236,7 @@ class Tracking{
     fun TrackingBody(innerPadding : PaddingValues, malapi: Malapi, malUsing: MalUsing, aniListApi: AniListApi, room: room){
         val folderList = room.getFolderList().collectAsState(initial = emptyList()).value
         val animeList = malUsing.getAnimeList(folderList.filter { file -> file.malId != 0 }).collectAsState(initial = emptyList()).value
-        val animeListAL = aniListApi.getAnimeById(folderList.filter { file -> file.aniId != 0  }).collectAsState(initial = emptyList()).value
+        val animeListAL = aniListApi.getAnimeById().collectAsState(initial = MediaEntries(listOf())).value.entries
         val isOnline = rememberNetworkState(LocalContext.current)
         if (!isOnline){
             Box(
@@ -254,11 +254,11 @@ class Tracking{
             }
         }
         else{
-            var isLoading by remember { mutableStateOf(true) }
-            LaunchedEffect(animeList,animeListAL) {
-                isLoading = !folderList.isEmpty() && (animeList.isEmpty() || animeListAL.isEmpty())
-            }
             if (primarySelectedTab.value == 0){
+                var isLoading by remember { mutableStateOf(true) }
+                LaunchedEffect(folderList,animeList,animeListAL) {
+                    isLoading = folderList.isEmpty() || (animeListAL.isEmpty() || animeList.isEmpty())
+                }
                 if (isLoading){
                     Box(
                         modifier = Modifier.fillMaxSize()
@@ -294,169 +294,200 @@ class Tracking{
                         }
                     }
                 }
+                else if (animeListAL.isEmpty() && animeList.isEmpty()){
+                    Box (
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        contentAlignment = Alignment.Center
+                    ){
+                        Column (
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ){
+                            Image(
+                                painter = painterResource(R.drawable.qiqi),
+                                contentDescription = null,
+                                contentScale = ContentScale.FillWidth,
+                                colorFilter = null
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "No Anime is Tracked",
+                                color = Color.White.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
                 else{
                     Column (
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding),
                     ){
-                        Text(
-                            text = "MyAnimeList",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
-                                .padding(top = 10.dp),
-                            fontFamily = FontFamily.SansSerif
-                        )
-                        LazyColumn {
-                            items(animeList) { anime ->
-                                Card (
-                                    onClick = {},
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = Color.White.copy(0.1f)
-                                    ),
-                                    shape = RoundedCornerShape(16.dp),
-                                    elevation = CardDefaults.cardElevation(2.dp),
-                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 15.dp)
-                                ){
-                                    Row (
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(IntrinsicSize.Min)
+                        if (!animeList.isEmpty()) {
+                            Text(
+                                text = "MyAnimeList",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
+                                    .padding(top = 10.dp),
+                                fontFamily = FontFamily.SansSerif
+                            )
+                            LazyColumn {
+                                items(animeList) { anime ->
+                                    Card (
+                                        onClick = {},
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color.White.copy(0.1f)
+                                        ),
+                                        shape = RoundedCornerShape(16.dp),
+                                        elevation = CardDefaults.cardElevation(12.dp),
+                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 15.dp)
                                     ){
-                                        Spacer(modifier = Modifier.width(15.dp))
-                                        Icon(
-                                            imageVector = Icons.Default.Movie,
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(30.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(15.dp))
-                                        Column {
-                                            Spacer(modifier = Modifier.height(10.dp))
-                                            Text(
-                                                text = "${anime?.title}",
-                                                color = Color.White,
-                                                fontSize = 20.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                modifier = Modifier.padding(end = 8.dp)
+                                        Row (
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp)
+                                                .height(IntrinsicSize.Min)
+                                        ){
+                                            Spacer(modifier = Modifier.width(15.dp))
+                                            Icon(
+                                                imageVector = Icons.Default.Movie,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(30.dp)
                                             )
-                                            Row (
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ){
-                                                var watched = anime?.my_list_status?.num_episodes_watched?.toFloat()?: 0f
-                                                if (watched==null)
-                                                    watched = 0f
-                                                val total = anime?.num_episodes?.toFloat()?: 1f
-                                                LinearProgressIndicator(
-                                                    progress = { watched/total },
-                                                    color = Color(color = 0xFF0BA6DF),
-                                                    trackColor = Color.Black,
-                                                    gapSize = 0.dp,
-                                                    strokeCap = StrokeCap.Butt,
-                                                    modifier = Modifier
-                                                        .clip(shape = RoundedCornerShape(8.dp))
-                                                        .border(
-                                                            width = 0.2.dp,
-                                                            color = Color.Black,
-                                                            shape = RoundedCornerShape(8.dp)
-                                                        )
-                                                        .weight(1f)
-                                                ){}
-                                                Spacer(modifier = Modifier.width(10.dp))
+                                            Spacer(modifier = Modifier.width(15.dp))
+                                            Column {
+                                                Spacer(modifier = Modifier.height(10.dp))
                                                 Text(
-                                                    text = "${watched.toInt()} / ${total.toInt()}",
-                                                    color = Color.White.copy(alpha = 0.8f),
-                                                    fontSize = 14.sp,
+                                                    text = "${anime?.title}",
+                                                    color = Color.White,
+                                                    fontSize = 20.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    modifier = Modifier.padding(end = 8.dp)
                                                 )
-                                                Spacer(modifier = Modifier.width(10.dp))
+                                                Row (
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ){
+                                                    var watched = anime?.my_list_status?.num_episodes_watched?.toFloat()?: 0f
+                                                    if (watched==null)
+                                                        watched = 0f
+                                                    val total = anime?.num_episodes?.toFloat()?: 1f
+                                                    LinearProgressIndicator(
+                                                        progress = { watched/total },
+                                                        color = Color(color = 0xFF0BA6DF),
+                                                        trackColor = Color.Black,
+                                                        gapSize = 0.dp,
+                                                        strokeCap = StrokeCap.Butt,
+                                                        modifier = Modifier
+                                                            .clip(shape = RoundedCornerShape(8.dp))
+                                                            .border(
+                                                                width = 0.2.dp,
+                                                                color = Color.Black,
+                                                                shape = RoundedCornerShape(8.dp)
+                                                            )
+                                                            .weight(1f)
+                                                    ){}
+                                                    Spacer(modifier = Modifier.width(10.dp))
+                                                    Text(
+                                                        text = "${watched.toInt()} / ${total.toInt()}",
+                                                        color = Color.White.copy(alpha = 0.8f),
+                                                        fontSize = 14.sp,
+                                                    )
+                                                    Spacer(modifier = Modifier.width(10.dp))
+                                                }
+                                                Spacer(modifier = Modifier.height(10.dp))
                                             }
-                                            Spacer(modifier = Modifier.height(10.dp))
                                         }
                                     }
                                 }
                             }
                         }
-                        Text(
-                            text = "AniList",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-                            fontFamily = FontFamily.SansSerif
-                        )
-                        LazyColumn {
-                            items(animeListAL){ anime ->
-                                Card (
-                                    onClick = {},
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = Color.White.copy(0.1f)
-                                    ),
-                                    shape = RoundedCornerShape(16.dp),
-                                    elevation = CardDefaults.cardElevation(2.dp),
-                                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 15.dp)
-                                ){
-                                    Row (
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(IntrinsicSize.Min)
+                        if (!animeListAL.isEmpty()) {
+                            Text(
+                                text = "AniList",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                                fontFamily = FontFamily.SansSerif
+                            )
+                            LazyColumn {
+                                items(animeListAL){ anime ->
+                                    Card (
+                                        onClick = {},
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color.White.copy(0.1f)
+                                        ),
+                                        shape = RoundedCornerShape(16.dp),
+                                        elevation = CardDefaults.cardElevation(12.dp),
+                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 15.dp)
                                     ){
-                                        Spacer(modifier = Modifier.width(15.dp))
-                                        Icon(
-                                            imageVector = Icons.Default.Movie,
-                                            contentDescription = null,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(30.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(15.dp))
-                                        Column {
-                                            Spacer(modifier = Modifier.height(10.dp))
-                                            Text(
-                                                text = "${anime?.Media?.title?.english}",
-                                                color = Color.White,
-                                                fontSize = 20.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                modifier = Modifier.padding(end = 8.dp)
+                                        Row (
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp)
+                                                .height(IntrinsicSize.Min)
+                                        ){
+                                            Spacer(modifier = Modifier.width(15.dp))
+                                            Icon(
+                                                imageVector = Icons.Default.Movie,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(30.dp)
                                             )
-                                            Row (
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ){
-
-                                                var watched = anime?.MediaList?.progress?.toFloat()
-                                                if (watched==null)
-                                                    watched = 0f
-                                                val total = anime?.Media?.episodes?.toFloat()?: 1f
-                                                LinearProgressIndicator(
-                                                    progress = { watched/total },
-                                                    color = Color(color = 0xFF0BA6DF),
-                                                    trackColor = Color.Black,
-                                                    gapSize = 0.dp,
-                                                    strokeCap = StrokeCap.Butt,
-                                                    modifier = Modifier
-                                                        .clip(shape = RoundedCornerShape(8.dp))
-                                                        .border(
-                                                            width = 0.2.dp,
-                                                            color = Color.Black,
-                                                            shape = RoundedCornerShape(8.dp)
-                                                        )
-                                                        .weight(1f)
-                                                ){}
-                                                Spacer(modifier = Modifier.width(10.dp))
+                                            Spacer(modifier = Modifier.width(15.dp))
+                                            Column {
+                                                Spacer(modifier = Modifier.height(10.dp))
                                                 Text(
-                                                    text = "${watched.toInt()} / ${total.toInt()}",
-                                                    color = Color.White.copy(alpha = 0.8f),
-                                                    fontSize = 14.sp,
+                                                    text = "${anime.media.title.english?:anime.media.title.romaji}",
+                                                    color = Color.White,
+                                                    fontSize = 20.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    modifier = Modifier.padding(end = 8.dp)
                                                 )
-                                                Spacer(modifier = Modifier.width(10.dp))
+                                                Row (
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ){
+
+                                                    var watched = anime.progress.toFloat()?: 0f
+                                                    if (watched==null)
+                                                        watched = 0f
+                                                    val total = anime.media.episodes.toFloat()?: 1f
+                                                    LinearProgressIndicator(
+                                                        progress = { watched/total },
+                                                        color = Color(color = 0xFF0BA6DF),
+                                                        trackColor = Color.Black,
+                                                        gapSize = 0.dp,
+                                                        strokeCap = StrokeCap.Butt,
+                                                        modifier = Modifier
+                                                            .clip(shape = RoundedCornerShape(8.dp))
+                                                            .border(
+                                                                width = 0.2.dp,
+                                                                color = Color.Black,
+                                                                shape = RoundedCornerShape(8.dp)
+                                                            )
+                                                            .weight(1f)
+                                                    ){}
+                                                    Spacer(modifier = Modifier.width(10.dp))
+                                                    Text(
+                                                        text = "${watched.toInt()} / ${total.toInt()}",
+                                                        color = Color.White.copy(alpha = 0.8f),
+                                                        fontSize = 14.sp,
+                                                    )
+                                                    Spacer(modifier = Modifier.width(10.dp))
+                                                }
+                                                Spacer(modifier = Modifier.height(10.dp))
                                             }
-                                            Spacer(modifier = Modifier.height(10.dp))
                                         }
                                     }
                                 }
-
                             }
                         }
                     }
@@ -516,7 +547,7 @@ class Tracking{
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .fillMaxHeight()
-                                                            .aspectRatio(0.7f),
+                                                            .aspectRatio(0.75f),
                                                         contentScale = ContentScale.FillWidth
                                                     )
                                                     Spacer(modifier = Modifier.height(8.dp))
@@ -660,7 +691,7 @@ class Tracking{
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .fillMaxHeight()
-                                                            .aspectRatio(0.7f),
+                                                            .aspectRatio(0.75f),
                                                         contentScale = ContentScale.FillWidth
                                                     )
                                                     Spacer(modifier = Modifier.height(8.dp))

@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -122,7 +123,7 @@ fun SettingsBottomBar(navController: NavController){
             Icon(
                 imageVector = Icons.Default.Settings,
                 contentDescription = null,
-                tint = Color.White,
+                tint = Color(0xFF0BA6DF).copy(alpha = 0.8f),
                 modifier = Modifier.size(26.dp)
             )
             Spacer(modifier = Modifier.height(5.dp))
@@ -130,7 +131,7 @@ fun SettingsBottomBar(navController: NavController){
                 text = "Settings",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.White
+                color = Color(0xFF0BA6DF).copy(alpha = 0.8f)
             )
         }
     }
@@ -154,7 +155,7 @@ fun SettingsBody(innerPadding : PaddingValues,navController: NavController){
                     .clickable(onClick = {
                         navController.navigate("Tracker")
                     })
-                    .height(IntrinsicSize.Min)
+                    .height(IntrinsicSize.Min),
             ){
                 Spacer(modifier = Modifier.width(15.dp))
                 Icon(

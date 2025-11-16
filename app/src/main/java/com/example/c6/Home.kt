@@ -160,7 +160,7 @@ fun HomeBottomBar(navController: NavController,malUsing: MalUsing){
             Icon(
                 imageVector = Icons.Default.VideoLibrary,
                 contentDescription = null,
-                tint = Color.White,
+                tint = Color(0xFF0BA6DF).copy(alpha = 0.8f),
                 modifier = Modifier.size(26.dp)
             )
             Spacer(modifier = Modifier.height(5.dp))
@@ -168,7 +168,7 @@ fun HomeBottomBar(navController: NavController,malUsing: MalUsing){
                 text = "Library",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.White
+                color = Color(0xFF0BA6DF).copy(alpha = 0.8f)
             )
         }
         Column (
@@ -248,7 +248,6 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
             false
         }
     }
-    Log.d("Home","$folderCount")
     if (isLoading && folderCount != 0){
         Box(
             modifier = Modifier
@@ -444,7 +443,7 @@ fun HomeBody(innerPadding : PaddingValues,room: room,context: ComponentActivity,
                             containerColor = Color.White.copy(0.1f)
                         ),
                         shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(2.dp),
+                        elevation = CardDefaults.cardElevation(12.dp),
                         modifier = Modifier.padding(vertical = 8.dp, horizontal = 15.dp)
                             .pointerInput(Unit){
                                 detectTapGestures(
