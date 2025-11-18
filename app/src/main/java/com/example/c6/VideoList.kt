@@ -122,23 +122,28 @@ fun videoListTopBar(context: ComponentActivity,flags: AppFlags,folderUri: Folder
 @SuppressLint("CoroutineCreationDuringComposition")
 @Composable
 fun videoListBody(context: ComponentActivity, playerLauncher: ActivityResultLauncher<Intent>, innerPadding: PaddingValues, malUsing: MalUsing, aniListApi: AniListApi, room: room, folderUri: FolderUri, updateProgress: UpdateProgress, flag: Boolean){
-    val flag1 = SettingsManager.getUpdateProgress(context).collectAsState(initial = false).value
     var isLoading by remember { mutableStateOf(true) }
-    val isOnline = rememberNetworkState(context)
     var videoList by remember { mutableStateOf<List<DocumentFile>>(emptyList()) }
+    val folderList = room.getFolderList().collectAsState(initial = emptyList()).value
+    val animeListMal = malUsing.getAnimeList(folderList).collectAsState(initial = emptyList()).value
+    val animeListAl = aniListApi.getAnimeById().collectAsState(initial = MediaEntries(listOf())).value.entries
+    val flag1 = SettingsManager.getUpdateProgress(context).collectAsState(initial = false).value
+    val isOnline = rememberNetworkState(context)
+    Log.d("VideoList","FolderList: ${folderList} MAl: $animeListMal AniList: $animeListAl")
     if (flag && flag1){
         if (isOnline) {
-            Log.d("VideoListEp","${updateProgress.epNumber} ${updateProgress.alAnimeId}")
-            if (updateProgress.alAnimeId.value != 0) {
+            if (updateProgress.alAnimeId.value != 0 && !animeListAl.isEmpty() && updateProgress.epNumber.value>animeListAl.first().progress) {
                 aniListApi.updateAnimeList(updateProgress.alAnimeId.value,updateProgress.epNumber.value)
             }
-            if (updateProgress.malAnimeId.value != 0) {
+            if (!animeListMal.isEmpty() && updateProgress.malAnimeId.value != 0 && updateProgress.epNumber.value > (animeListMal.first()?.my_list_status?.num_episodes_watched ?: 0)) {
                 malUsing.updateUserList(updateProgress.malAnimeId.value,updateProgress.epNumber.value)
             }
         }
         else{
-            room.addEp(updateProgress.malAnimeId.value,updateProgress.alAnimeId.value,updateProgress.epNumber.value)
-            Toast.makeText(context,"Update when internet available", Toast.LENGTH_SHORT).show()
+            if ((!animeListAl.isEmpty() && updateProgress.epNumber.value>animeListAl.first().progress) || (!animeListMal.isEmpty() && updateProgress.epNumber.value>animeListMal?.first()?.my_list_status?.num_episodes_watched?:0)){
+                room.addEp(updateProgress.malAnimeId.value,updateProgress.alAnimeId.value,updateProgress.epNumber.value)
+                Toast.makeText(context,"Update when internet available", Toast.LENGTH_SHORT).show()
+            }
         }
         SettingsManager.flag.value = !flag
     }

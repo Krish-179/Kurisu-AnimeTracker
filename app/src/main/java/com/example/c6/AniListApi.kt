@@ -57,6 +57,7 @@ class AniListApi(val context: ComponentActivity){
                                 romaji
                             }
                             episodes
+                            id
                         }
                     }
                 }
@@ -247,6 +248,7 @@ data class MediaX(
     val media: MediaY
 )
 data class MediaY(
+    val id: Int,
     val title: MediaTitle,
     val episodes: Int
 )

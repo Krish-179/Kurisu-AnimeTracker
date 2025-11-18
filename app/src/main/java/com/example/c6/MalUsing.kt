@@ -67,6 +67,7 @@ data class Anime(
     val num_episodes: Int
 )
 data class WatchingAnime(
+    val id: Int,
     val title : String,
     val num_episodes: Int,
     val my_list_status: ListStatus
@@ -96,7 +97,7 @@ interface Mal{
     @GET("anime/{anime_id}")
     suspend fun getAnime(
         @Path("anime_id") anime_id: Int,
-        @Query("fields") fields: String = "title,num_episodes,my_list_status"
+        @Query("fields") fields: String = "id,title,num_episodes,my_list_status"
     ): WatchingAnime
 
     @GET("anime")
