@@ -235,6 +235,7 @@ class Tracking{
     @Composable
     fun TrackingBody(innerPadding : PaddingValues, malapi: Malapi, malUsing: MalUsing, aniListApi: AniListApi, room: room){
         val folderList = room.getFolderList().collectAsState(initial = emptyList()).value
+        val count = folderList.filter { folder -> folder.malId != 0 && folder.aniId != 0 }.size
         val animeList = malUsing.getAnimeList(folderList.filter { file -> file.malId != 0 }).collectAsState(initial = emptyList()).value
         val animeListAL = aniListApi.getAnimeById().collectAsState(initial = MediaEntries(listOf())).value.entries
         val isOnline = rememberNetworkState(LocalContext.current)
@@ -257,7 +258,8 @@ class Tracking{
             if (primarySelectedTab.value == 0){
                 var isLoading by remember { mutableStateOf(true) }
                 LaunchedEffect(folderList,animeList,animeListAL) {
-                    isLoading = folderList.isEmpty() || (animeListAL.isEmpty() || animeList.isEmpty())
+                    isLoading = (!(malapi.access_token.isNullOrEmpty() || aniListApi.access_token.isNullOrEmpty()) && folderList.isNotEmpty()) && !(animeListAL.isNotEmpty() || animeList.isNotEmpty())
+                    Log.d("Tracker","${!(malapi.access_token.isNullOrEmpty() || aniListApi.access_token.isNullOrEmpty())}  ${folderList.isNotEmpty()} ${!(animeListAL.isNotEmpty() || animeList.isNotEmpty())}")
                 }
                 if (isLoading){
                     Box(
@@ -266,6 +268,32 @@ class Tracking{
                         contentAlignment = Alignment.Center
                     ){
                         CircularProgressIndicator()
+                    }
+                }
+                else if (malapi.access_token.isNullOrEmpty() && aniListApi.access_token.isNullOrEmpty()){
+                    Box (
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        contentAlignment = Alignment.Center
+                    ){
+                        Column (
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ){
+                            Image(
+                                painter = painterResource(R.drawable.qiqi),
+                                contentDescription = null,
+                                contentScale = ContentScale.FillWidth,
+                                colorFilter = null
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "No Tracker is not connected",
+                                color = Color.White.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
                 else if (folderList.isEmpty()){
@@ -294,7 +322,7 @@ class Tracking{
                         }
                     }
                 }
-                else if (animeListAL.isEmpty() && animeList.isEmpty()){
+                else if (folderList.size == count){
                     Box (
                         modifier = Modifier
                             .fillMaxSize()

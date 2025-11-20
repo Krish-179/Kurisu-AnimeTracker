@@ -1,6 +1,8 @@
 package com.example.c6
 
 import android.net.Uri
+import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +49,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
@@ -112,7 +115,8 @@ fun selectAnimeTopBar(navController: NavController,flags: AppFlags,searchKeyword
                             color = Color.White,
                         )
                     },
-                    modifier = Modifier.focusRequester(focusRequester)
+                    modifier = Modifier
+                        .focusRequester(focusRequester)
                         .width(IntrinsicSize.Min)
                 )
             }
@@ -184,7 +188,8 @@ fun selectAnimeBody(innerPadding: PaddingValues,room: room,malUsing: MalUsing,an
     }
     if (!isOnline){
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(innerPadding),
             contentAlignment = Alignment.Center
         ){
@@ -197,23 +202,53 @@ fun selectAnimeBody(innerPadding: PaddingValues,room: room,malUsing: MalUsing,an
         }
     }
     else{
+        Log.d("ANIMEBODY","in else")
         if (flags.malSelected.value){
+            val isMalConnected = room.tokenDao.display().collectAsState(initial = Token()).value.malApiRefreshToken
             val malList = malUsing.searchAnimeList(keyword?:"").collectAsState(initial = emptyList()).value
-            LaunchedEffect(malList) {
-                isLoading = malList.isEmpty()
+            LaunchedEffect(malList,isMalConnected) {
+                isLoading = malList.isEmpty() && !isMalConnected.isNullOrEmpty()
             }
             if (isLoading){
                 Box(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
                         .padding(innerPadding),
                     contentAlignment = Alignment.Center
                 ){
                     CircularProgressIndicator()
                 }
             }
+            else if (isMalConnected.isNullOrEmpty()){
+                Box (
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ){
+                    Column (
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ){
+                        Image(
+                            painter = painterResource(R.drawable.qiqi),
+                            contentDescription = null,
+                            contentScale = ContentScale.FillWidth,
+                            colorFilter = null
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "MAL is not connected",
+                            color = Color.White.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
             else{
                 Box(
-                    modifier = Modifier.padding(innerPadding)
+                    modifier = Modifier
+                        .padding(innerPadding)
                         .fillMaxSize()
                 ){
                     LazyColumn (
@@ -222,11 +257,15 @@ fun selectAnimeBody(innerPadding: PaddingValues,room: room,malUsing: MalUsing,an
                         items(malList){ anime->
                             Row (
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)
+                                modifier = Modifier
+                                    .padding(horizontal = 12.dp, vertical = 12.dp)
                                     .fillMaxWidth()
                                     .clickable(
                                         onClick = {
-                                            room.updateMalAnimeId(anime.node.id,folderUri.uri?:"")
+                                            room.updateMalAnimeId(
+                                                anime.node.id,
+                                                folderUri.uri ?: ""
+                                            )
                                             navController.popBackStack()
                                         }
                                     )
@@ -236,14 +275,16 @@ fun selectAnimeBody(innerPadding: PaddingValues,room: room,malUsing: MalUsing,an
                                     model = anime.node.main_picture.medium,
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(width = 125.dp,200.dp)
+                                    modifier = Modifier
+                                        .size(width = 125.dp, 200.dp)
                                         .clip(shape = RoundedCornerShape(8.dp))
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column (
                                     horizontalAlignment = Alignment.Start,
                                     verticalArrangement = Arrangement.Top,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
                                         .fillMaxHeight()
                                         .align(alignment = Alignment.Top)
                                         .padding(horizontal = 10.dp)
@@ -289,22 +330,51 @@ fun selectAnimeBody(innerPadding: PaddingValues,room: room,malUsing: MalUsing,an
             }
         }
         if (flags.aniSelected.value){
+            val isAniListConnected = room.tokenDao.display().collectAsState(initial = Token()).value.aniListToken
             val aniList = aniListApi.searchAnimeList(keyword).collectAsState(initial = emptyList<AnimeDetails>()).value
-            LaunchedEffect(aniList) {
-                isLoading = aniList.isEmpty()
+            LaunchedEffect(aniList,isAniListConnected) {
+                isLoading = aniList.isEmpty() && !isAniListConnected.isNullOrEmpty()
             }
             if (isLoading){
                 Box(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
                         .padding(innerPadding),
                     contentAlignment = Alignment.Center
                 ){
                     CircularProgressIndicator()
                 }
             }
+            else if (isAniListConnected.isNullOrEmpty()){
+                Box (
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ){
+                    Column (
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ){
+                        Image(
+                            painter = painterResource(R.drawable.qiqi),
+                            contentDescription = null,
+                            contentScale = ContentScale.FillWidth,
+                            colorFilter = null
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "AniList is not connected",
+                            color = Color.White.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
             else{
                 Box(
-                    modifier = Modifier.padding(innerPadding)
+                    modifier = Modifier
+                        .padding(innerPadding)
                         .fillMaxSize()
                 ){
                     LazyColumn (
@@ -313,11 +383,12 @@ fun selectAnimeBody(innerPadding: PaddingValues,room: room,malUsing: MalUsing,an
                         items(aniList){ anime->
                             Row (
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)
+                                modifier = Modifier
+                                    .padding(horizontal = 12.dp, vertical = 12.dp)
                                     .fillMaxWidth()
                                     .clickable(
                                         onClick = {
-                                            room.updateAniAnimeId(anime.id,folderUri.uri?:"")
+                                            room.updateAniAnimeId(anime.id, folderUri.uri ?: "")
                                             navController.popBackStack()
                                         }
                                     )
@@ -327,14 +398,16 @@ fun selectAnimeBody(innerPadding: PaddingValues,room: room,malUsing: MalUsing,an
                                     model = anime.coverImage.large,
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(width = 125.dp,200.dp)
+                                    modifier = Modifier
+                                        .size(width = 125.dp, 200.dp)
                                         .clip(shape = RoundedCornerShape(8.dp))
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column (
                                     horizontalAlignment = Alignment.Start,
                                     verticalArrangement = Arrangement.Top,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
                                         .fillMaxHeight()
                                         .align(alignment = Alignment.Top)
                                         .padding(horizontal = 10.dp)

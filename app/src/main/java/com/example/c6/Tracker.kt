@@ -236,11 +236,11 @@ fun TrackerBody(innerPadding : PaddingValues,context: ComponentActivity,malapi: 
                     TextButton(
                         onClick = {
                             if (logOutTrackerName.contentEquals("MyAnimeList")){
-                                room.setMalApiAccessToken("")
-                                room.setMalApiRefreshToken("")
+                                room.setMalApiAccessToken(null)
+                                room.setMalApiRefreshToken(null)
                             }
                             if (logOutTrackerName.contentEquals("AniList")){
-                                room.setAniListToken("")
+                                room.setAniListToken(null)
                             }
                             showAlertDialog = false
                         }

@@ -90,17 +90,17 @@ class room(private val context: ComponentActivity){
             folderDao.updateAniId(animeId,uri)
         }
     }
-    fun setMalApiAccessToken(token: String){
+    fun setMalApiAccessToken(token: String?){
         context.lifecycleScope.launch(Dispatchers.IO) {
             tokenDao.updateMalApiAccessToken(token)
         }
     }
-    fun setMalApiRefreshToken(token: String){
+    fun setMalApiRefreshToken(token: String?){
         context.lifecycleScope.launch(Dispatchers.IO) {
             tokenDao.updateMalApiRefreshToken(token)
         }
     }
-    fun setAniListToken(token: String){
+    fun setAniListToken(token: String?){
         context.lifecycleScope.launch(Dispatchers.IO) {
             tokenDao.updateAniListToken(token)
         }
@@ -198,13 +198,13 @@ interface GetToken{
     @Insert(onConflict = IGNORE)
     suspend fun insertRow(token: Token)
     @Query("update tokens set malApiAccessToken = :token where id = 0")
-    suspend fun updateMalApiAccessToken(token: String)
+    suspend fun updateMalApiAccessToken(token: String?)
 
     @Query("update tokens set malApiRefreshToken = :token where id = 0")
-    suspend fun updateMalApiRefreshToken(token: String)
+    suspend fun updateMalApiRefreshToken(token: String?)
 
     @Query("update tokens set aniListToken = :token where id = 0")
-    suspend fun updateAniListToken(token: String)
+    suspend fun updateAniListToken(token: String?)
 
     @Query("select * from tokens where id = 0")
     fun display(): Flow<Token>
